@@ -1,4 +1,4 @@
-This repo implement a hash-based decoder for the nervosnetwork/rvv branch.
+This repo implements a hash-based decoder for the nervosnetwork/rvv branch.
 The hash function is generated using [minimum perfect hash function](https://github.com/ilanschnell/perfect-hash). 
 For a nice intro see [here](http://ilan.schnell-web.net/prog/perfect-hash/).
 
@@ -15,9 +15,9 @@ cargo bench
 ```
 
 From the bench result, there is minor performance improvement. Because both the
-benchmark and mphf is generated randomly, I have seen improvement ranged from 0 up to 20%.
+benchmark and mphf are generated randomly, I have seen improvement ranging from 0 up to 20%.
 
 
 ## TODO
-[ ] Explore nicer and faster hash functions.
-[ ] The mphf is generated from a seed. Find a way to move randomness from the generation process (probably by removing salt).
+- [ ] Explore nicer and faster hash functions.
+- [ ] The mphf is generated from a seed. Find a way to move randomness from the generation process (probably by removing salt).
