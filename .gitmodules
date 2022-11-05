@@ -1,3 +1,6 @@
 [submodule "perfect-hash"]
 	path = perfect-hash
 	url = git@github.com:ilanschnell/perfect-hash.git
+[submodule "ckb-vm"]
+	path = ckb-vm
+	url = https://github.com/nervosnetwork/ckb-vm.git
