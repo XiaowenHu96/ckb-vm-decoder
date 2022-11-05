@@ -1,0 +1,3 @@
+[submodule "perfect-hash"]
+	path = perfect-hash
+	url = git@github.com:ilanschnell/perfect-hash.git
