@@ -4,6 +4,7 @@ import sys
 import csv
 import random
 import string
+from optparse import OptionParser
 sys.path.append("perfect-hash/")
 from perfect_hash import generate_hash
 
@@ -75,9 +76,9 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
     for mask in &MASKS {{
         let match_bits = instruction_bits & mask;
         let idx = find_{basename}(match_bits);
-        if  idx < {size} && (INSTRUTION_LIST[idx].mask & instruction_bits) == INSTRUTION_LIST[idx].match_bits {
+        if  idx < {size} && (INSTRUCTION_LIST[idx].mask & instruction_bits) == INSTRUCTION_LIST[idx].match_bits {{
             return Some(set_instruction_length_4(
-            (INSTRUTION_LIST[idx].builder)(instruction_bits,INSTRUTION_LIST[idx].opcode)))
+            (INSTRUCTION_LIST[idx].builder)(instruction_bits,INSTRUCTION_LIST[idx].opcode)))
         }}
     }}
     return None
@@ -87,13 +88,13 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
 """
 Generate postlude, i.e., instruction definitions and lists
 """
-def postlude(instructions):
+def postlude(basename, instructions):
     code = ""
     # init each instruction
     for inst in instructions:
         code += inst.to_rust_construct_inst()
     # put all instruction in the list
-    code += f"pub const INSTRUTION_LIST : [VInstruction; {len(instructions)}] = [\n"
+    code += f"pub const INSTRUCTION_LIST : [VInstruction; {len(instructions)}] = [\n"
     for inst in instructions:
         code += inst.to_rust_inst_name() + ",\n"
     code += "];\n"
@@ -112,8 +113,20 @@ def postlude(instructions):
     code += "];\n"
     return code
 
+"""
+Generate test case
+"""
+def gen_test(basename, instructions):
+    keys = [x.match_bits for x in instructions]
+    keys_list = "["
+    for k in keys:
+        keys_list += k + ",\n"
+    keys_list += "];"
+    ret = MyHash.test_template.format(BASENAME=str.upper(basename),basename=basename,keys=keys_list, size=len(instructions))
+    return ret
+
+
 class MyHash(object):
-    # TODO: Review this
     def __init__(self, N):
         self.N = N
         self.salt = []
@@ -132,7 +145,6 @@ class MyHash(object):
 // --- ------------------------------------------- ---
 const G_{BASENAME} : [u32;{size}] = $G;
 """
-#TODO  review s0 +1
     hash_template= """
 #[inline(always)]
 fn hash_f_{basename}_{version}(key: u32) -> usize {{
@@ -163,11 +175,14 @@ instruction_name,mask,match_bits,handler
 """
 def parse_key(filename):
     instructions = []
-    with open(filename) as csvfile:
-        reader = csv.reader(csvfile, delimiter=",")
-        for line in reader:
-            line = list(map(lambda x : str.strip(x), line))
-            instructions.append(Instruction(line[0],line[1],line[2],line[3]))
+    try:
+        with open(filename) as csvfile:
+            reader = csv.reader(csvfile, delimiter=",")
+            for line in reader:
+                line = list(map(lambda x : str.strip(x), line))
+                instructions.append(Instruction(line[0],line[1],line[2],line[3]))
+    except IOError:
+        sys.exit("Error: Could not open {} for reading.".format(filename))
     return instructions
 
 """
@@ -201,30 +216,56 @@ def gen_hashmap_filter(basename, instructions):
 Generate hashmaps based on the masks in instructions
 Returns a list of hashmaps
 """
-def build_hashmaps(instructions):
-    basename = "rvv"
+def build_hashmaps(basename, instructions):
     code = gen_hashmap_filter(basename, instructions)
-    # generate interface
-    # generate code to iterate through each mask
     code += interface_template().format(basename=basename, size=len(instructions))
-    # for mask, insts in by_masks.items():
-    #     code += gen_hashmap_filter(mask, insts)
-    # generate interface
     return code
 
 
 def main():
-    insts = parse_key("rv_v")
+    usage = "usage: %prog KEYS_FILE"
+    description = """\
+Generate a hash-based decoder from perfect hash functions.
+Program produce code in file [basename]_decoder.rs
+Example input file see: TODO.
+"""
+
+    parser = OptionParser(usage = usage,
+                          description = description,
+                          prog = sys.argv[0],
+                          version = "%prog: ")
+
+    parser.add_option("-o", "--output",
+                      action  = "store",
+                      help    = "Specify output file explicitly."
+                                "'-o std' to output to standard output",
+                      metavar = "FILE")
+    
+    options, args = parser.parse_args()
+    if len(args) != 1:
+        parser.error("Missing input file name")
+    file = args[0]
+    basename = file.split('.')[0]
+
+    if options.output:
+        outname = options.output
+    else:
+        outname = basename+"_decoder.rs"
+
+    insts = parse_key(file)
     code = prelude()
-    code += build_hashmaps(insts)
-    code += postlude(insts)
-    keys = [x.match_bits for x in insts]
-    keys_list = "["
-    for k in keys:
-        keys_list += k + ",\n"
-    keys_list += "];"
-    code += MyHash.test_template.format(BASENAME="RVV",basename="rvv",keys=keys_list, size=len(insts))
-    print(code)
+    code += build_hashmaps(basename, insts)
+    code += postlude(basename, insts)
+    code += gen_test(basename, insts)
+
+    if outname == 'std':
+        stream = sys.stdout
+    else:
+        try:
+            stream = open(outname, 'w')
+        except IOError:
+            sys.exit("Error: Could not open {} for writing.".format(outname))
+    stream.write(code)
     
 
 if __name__ == '__main__':
