@@ -4,6 +4,7 @@ import sys
 import csv
 import random
 import string
+import os.path
 from optparse import OptionParser
 sys.path.append("perfect-hash/")
 from perfect_hash import generate_hash
@@ -27,19 +28,11 @@ class Instruction(object):
 Prelude
 """
 def prelude():
-    return """
-use ckb_vm_definitions::instructions as insts;
-
-use super::utils::{self, rd, rs1, rs2};
-use super::{
-    instruction_opcode_name, set_instruction_length_4, v, Instruction, Itype, Register, Rtype,
-    VItype, VVtype, VXtype,
+    return """use super::{
+    vi_builder, vsetivli_builder, vsetvl_builder, vsetvli_builder, vv_builder, vx_builder,
 };
-
-//TODO review this
-fn vm(instruction_bits: u32) -> bool {
-    instruction_bits & 0x2000000 != 0
-}
+use ckb_vm::instructions::insts as insts;
+use ckb_vm::instructions::{set_instruction_length_4, Instruction, Register};
 
 pub type OpcodeBuilder = fn(instruction_bits: u32, insts::InstructionOpcode) -> Instruction;
 
@@ -125,7 +118,6 @@ def gen_test(basename, instructions):
     ret = MyHash.test_template.format(BASENAME=str.upper(basename),basename=basename,keys=keys_list, size=len(instructions))
     return ret
 
-
 class MyHash(object):
     def __init__(self, N):
         self.N = N
@@ -161,11 +153,17 @@ fn find_{basename}(key:u32) -> usize {{
 """
 
     test_template = """
+
+#[cfg(test)]
+mod tests {{
+use super::*;
 const K_{BASENAME} : [u32;{size}] = {keys}
+#[test]
 pub fn test_{basename}() {{
     for i in 0..{size} {{
         assert!(find_{basename}(K_{BASENAME}[i]) == i)
     }}
+}}
 }}
 """
 
@@ -240,12 +238,17 @@ Example input file see: TODO.
                       help    = "Specify output file explicitly."
                                 "'-o std' to output to standard output",
                       metavar = "FILE")
+
+    parser.add_option("--dir",
+                      action  = "store",
+                      help    = "Specify output directory.",
+                      metavar = "FILE")
     
     options, args = parser.parse_args()
     if len(args) != 1:
         parser.error("Missing input file name")
     file = args[0]
-    basename = file.split('.')[0]
+    basename = os.path.basename(file).split('.')[0]
 
     if options.output:
         outname = options.output
@@ -261,6 +264,8 @@ Example input file see: TODO.
     if outname == 'std':
         stream = sys.stdout
     else:
+        if options.dir:
+            outname = os.path.join(options.dir, outname)
         try:
             stream = open(outname, 'w')
         except IOError:
