@@ -181,7 +181,7 @@ VREMU_VX        , 0xfc00707f , 0x88006057 , vx_builder
 VRGATHER_VI     , 0xfc00707f , 0x30003057 , vi_builder
 VRGATHER_VV     , 0xfc00707f , 0x30000057 , vv_builder
 VRGATHER_VX     , 0xfc00707f , 0x30004057 , vx_builder
-VRGATHEREI16_VV , 0xfc00707f , 0x38000057 , vv_builder       ,
+VRGATHEREI16_VV , 0xfc00707f , 0x38000057 , vv_builder
 VRSUB_VI        , 0xfc00707f , 0xc003057  , vi_builder
 VRSUB_VX        , 0xfc00707f , 0xc004057  , vx_builder
 VS1R_V          , 0xfff0707f , 0x2800027  , vx_builder

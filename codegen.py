@@ -10,22 +10,26 @@ import random
 import string
 import os.path
 from optparse import OptionParser
+from functools import reduce
 sys.path.append("perfect-hash/")
 from perfect_hash import generate_hash
 
 SET_INSTRUCTION_LEN = ""
 
 class Instruction(object):
-    def __init__(self, name, mask, match_bits, handler):
+    def __init__(self, name, mask, match_bits, handler, opcode_name=None):
         self.name = name
         self.mask = mask
         self.match_bits = match_bits
         self.handler = handler
+        self.opcode_name = name
+        if opcode_name is not None:
+            self.opcode_name = opcode_name
 
     def to_rust_construct_inst(self):
         return f"const INST_{self.name} : InstructionInfo = "\
         f"InstructionInfo::new({self.mask},{self.match_bits},"\
-        f"insts::OP_{self.name},{self.handler});\n"
+        f"insts::OP_{self.opcode_name},{self.handler});\n"
 
     def to_rust_inst_name(self):
         return f"INST_{self.name}"
@@ -110,7 +114,7 @@ class MyHash(object):
         while len(self.salt) != 4:
             self.salt.append(random.randint(1, self.N - 1))
         keys = [(key >> (8 * x) & 0xff) for x in range(0, 4)]
-        return sum(self.salt[i] * (c)
+        return sum(self.salt[i] * (c+1)
                    for i, c in enumerate(keys)) % self.N
     
     header_template =  """
@@ -123,7 +127,7 @@ const G_{BASENAME} : [u32;{size}] = $G;
     hash_template= """
 #[inline(always)]
 fn hash_f_{basename}_{version}(key: u32) -> usize {{
-    return ((key & 0xff) * {s0} + (key >> 8 & 0xff) * {s1} + (key >> 16 & 0xff) * {s2} + (key >> 24) * {s3}) as usize;
+    return (((key & 0xff )+1) * {s0} + ((key >> 8 & 0xff) + 1) * {s1} + ((key >> 16 & 0xff) + 1) * {s2} + ((key >> 24 )+ 1) * {s3}) as usize;
 }}
     """
 
@@ -153,7 +157,7 @@ pub fn test_{basename}() {{
 """
 File format:
 First line: set_instruction_length_n
-instruction_name,mask,match_bits,handler
+Rest: instruction_name,mask,match_bits,handler[,opcode_name]?
 """
 def parse_key(filename):
     instructions = []
@@ -163,36 +167,44 @@ def parse_key(filename):
             global SET_INSTRUCTION_LEN
             SET_INSTRUCTION_LEN = reader.__iter__().__next__()[0]
             for line in reader:
+                opcode_name = None
                 line = list(map(lambda x : str.strip(x), line))
-                instructions.append(Instruction(line[0],line[1],line[2],line[3]))
+                if len(line) == 5:
+                    opcode_name = line[4]
+                instructions.append(Instruction(line[0],line[1],line[2],line[3], opcode_name))
     except IOError:
         sys.exit("Error: Could not open {} for reading.".format(filename))
     return instructions
 
-# """
-# Handle duplicate key by merging operations.
-# E.G. OP_A,0x01(mask),0x0f1(key) 
-#      OP_B,0x02(mask),0x0f1(key)
-# Temporarily remove OP_B when generate the hash.
-# Return new instruction list and a map contains each duplicate key
-# """
-# def handle_duplcaite_key(instructions):
-#     by_keys = dict()
-#     for inst in instructions:
-#         if inst.match_bits in by_keys:
-#             by_keys[inst.match_bits].append(inst)
-#         else:
-#             by_keys[inst.mask] = [inst]
-#     new_insts = []
-#     for (key, insts) in by_keys.items():
-#         if (len(insts) > 1):
-#             if False in [x.handler == insts[0].handler for x in insts]:
-#                 sys.exit("Error: Duplicate key must have the same handler {}".format(
-#                     ))
-#             new_insts.append(insts[0])
-#         else:
-#             new_insts.append(insts[0])
-#     return new_insts, by_keys
+"""
+Handle duplicate key by merging opcode and finding minimal mask
+This only works if the opcodes that have the same keys 
+have corrspond error checking in the handler. 
+(Which must be the case, because by having the same handler, 
+it must distinguish among different opcode in the handler)
+"""
+def handle_duplcaite_key(instructions):
+
+    by_keys = dict()
+    for inst in instructions:
+        if inst.match_bits in by_keys:
+            by_keys[inst.match_bits].append(inst)
+        else:
+            by_keys[inst.match_bits] = [inst]
+    new_insts = []
+    for (key, insts) in by_keys.items():
+        if (len(insts) > 1):
+            if False in [x.handler == insts[0].handler for x in insts]:
+                sys.exit("Error: Duplicate key must have the same handler {}".format(
+                    ))
+            # produce minimal mask
+            minimal_mask = reduce(lambda x, y: x & y, [int(x.mask, 16) for x in insts])
+            insts[0].mask = hex(minimal_mask)
+            new_insts.append(insts[0])
+        else:
+            new_insts.append(insts[0])
+    print([str(x) for x in new_insts])
+    return new_insts
 
 """
 Generate code for a hashmap filter 
@@ -286,6 +298,7 @@ Example input file see: TODO.
         outname = basename+"_decoder.rs"
 
     insts = parse_key(file)
+    insts = handle_duplcaite_key(insts)
     code = prelude()
     code += build_hashmaps(basename, insts)
     code += postlude(basename, insts)

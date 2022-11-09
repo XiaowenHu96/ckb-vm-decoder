@@ -2,13 +2,13 @@ include!("./mod.rs");
 pub mod b;
 pub mod common;
 pub mod i;
-// pub mod c;
+pub mod c;
 pub mod v;
 
 use b::*;
 use common::*;
 use i::*;
-// use c::*;
+use c::*;
 use ckb_vm::instructions::insts;
 use v::*;
 

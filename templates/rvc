@@ -1,0 +1,35 @@
+set_instruction_length_2
+ADD      , 0xf003 , 0x9002 , cadd_ebreak_jalr
+ADDI     , 0xe003 , 0x1    , caddi_cnop
+ADDI16SP , 0xef83 , 0x6101 , caddi16sp        , ADDI
+ADDI4SPN , 0xe003 , 0x0    , caddi4spn        , ADDI
+ADDIW    , 0xe003 , 0x2001 , caddiw_jal
+ADDW     , 0xfc63 , 0x9c21 , caddw
+AND      , 0xfc63 , 0x8c61 , cand
+ANDI     , 0xec03 , 0x8801 , candi
+BEQZ     , 0xe003 , 0xc001 , cbeqz, BEQ
+BNEZ     , 0xe003 , 0xe001 , cbnez, BNE
+EBREAK   , 0xffff , 0x9002 , cadd_ebreak_jalr
+J        , 0xe003 , 0xa001 , cj, JAL
+JAL      , 0xe003 , 0x2001 , caddiw_jal
+JALR     , 0xf07f , 0x9002 , cadd_ebreak_jalr
+JR       , 0xf07f , 0x8002 , cjr_cmv, JALR
+LD       , 0xe003 , 0x6000 , cld
+LDSP     , 0xe003 , 0x6002 , cldsp            , LD
+LI       , 0xe003 , 0x4001 , cli, ADDI
+LUI      , 0xe003 , 0x6001 , clui
+LW       , 0xe003 , 0x4000 , clw
+LWSP     , 0xe003 , 0x4002 , clwsp            , LW
+MV       , 0xf003 , 0x8002 , cjr_cmv
+NOP      , 0xef83 , 0x1    , caddi_cnop, None
+OR       , 0xfc63 , 0x8c41 , cor
+SD       , 0xe003 , 0xe000 , csd
+SDSP     , 0xe003 , 0xe002 , csdsp            , SD
+SLLI     , 0xe003 , 0x2    , cslli
+SRAI     , 0xec03 , 0x8401 , csrai            , SD
+SRLI     , 0xec03 , 0x8001 , csrli
+SUB      , 0xfc63 , 0x8c01 , csub
+SUBW     , 0xfc63 , 0x9c01 , csubw
+SW       , 0xe003 , 0xc000 , csw
+SWSP     , 0xe003 , 0xc002 , cswsp            , SW
+XOR      , 0xfc63 , 0x8c21 , cxor
