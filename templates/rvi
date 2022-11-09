@@ -1,3 +1,4 @@
+set_instruction_length_4
 ADD    , 0xfe00707f , 0x33       , r_builder
 ADDI   , 0x707f     , 0x13       , is_builder
 ADDIW  , 0x707f     , 0x1b       , is_builder

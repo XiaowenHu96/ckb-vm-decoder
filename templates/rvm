@@ -1,0 +1,14 @@
+set_instruction_length_4
+DIV    , 0xfe00707f , 0x2004033 , r_builder
+DIVU   , 0xfe00707f , 0x2005033 , r_builder
+DIVUW  , 0xfe00707f , 0x200503b , r_builder
+DIVW   , 0xfe00707f , 0x200403b , r_builder
+MUL    , 0xfe00707f , 0x2000033 , r_builder
+MULH   , 0xfe00707f , 0x2001033 , r_builder
+MULHSU , 0xfe00707f , 0x2002033 , r_builder
+MULHU  , 0xfe00707f , 0x2003033 , r_builder
+MULW   , 0xfe00707f , 0x200003b , r_builder
+REM    , 0xfe00707f , 0x2006033 , r_builder
+REMU   , 0xfe00707f , 0x2007033 , r_builder
+REMUW  , 0xfe00707f , 0x200703b , r_builder
+REMW   , 0xfe00707f , 0x200603b , r_builder

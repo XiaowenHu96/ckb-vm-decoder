@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+### TODO: Handle duplicate key by merging operations
+### TODO: Add comment for duplicated key
+### TODO: FIX API
+
 import sys
 import csv
 import random
@@ -8,6 +12,8 @@ import os.path
 from optparse import OptionParser
 sys.path.append("perfect-hash/")
 from perfect_hash import generate_hash
+
+SET_INSTRUCTION_LEN = ""
 
 class Instruction(object):
     def __init__(self, name, mask, match_bits, handler):
@@ -24,13 +30,17 @@ class Instruction(object):
     def to_rust_inst_name(self):
         return f"INST_{self.name}"
 
+    def __str__(self):
+        return f"{self.name},{self.mask},{self.match_bits},{self.handler}"
+
 """
 Prelude
 """
 def prelude():
-    return """use super::*;
+    return f"""use super::*;
 use ckb_vm::instructions::insts as insts;
-use ckb_vm::instructions::{set_instruction_length_4, Instruction, Register};
+use ckb_vm::Register;
+use ckb_vm::instructions::{{{SET_INSTRUCTION_LEN}, Instruction}};
 """
 
 """
@@ -38,13 +48,17 @@ Interface template
 """
 def interface_template():
     return """
-pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction> {{
+pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instruction> {{
+    let config = FactoryConfig::new::<R>(version);
     for mask in &MASKS {{
         let match_bits = instruction_bits & mask;
         let idx = find_{basename}(match_bits);
         if  idx < {size} && (INSTRUCTION_LIST[idx].mask & instruction_bits) == INSTRUCTION_LIST[idx].match_bits {{
-            return Some(set_instruction_length_4(
-            (INSTRUCTION_LIST[idx].builder)(instruction_bits,INSTRUCTION_LIST[idx].opcode)))
+            if let Some(instruction) = (INSTRUCTION_LIST[idx].builder)(instruction_bits,INSTRUCTION_LIST[idx].opcode, &config) {{
+                return Some({SET_INSTRUCTION_LEN}(instruction));
+            }} else {{
+                return None;
+            }}
         }}
     }}
     return None
@@ -66,12 +80,7 @@ def postlude(basename, instructions):
     code += "];\n"
 
     # find all mask, sort by its element size
-    by_masks = dict()
-    for inst in instructions:
-        if inst.mask in by_masks:
-            by_masks[inst.mask].append(inst)
-        else:
-            by_masks[inst.mask] = [inst]
+    by_masks = get_by_mask(instructions)
     sorted_masks = [k for k in sorted(by_masks, key=lambda x: len(by_masks[x]), reverse=True)]
     code += f"const MASKS : [u32; {len(sorted_masks)}] =[\n"
     for mask in sorted_masks:
@@ -143,6 +152,7 @@ pub fn test_{basename}() {{
 
 """
 File format:
+First line: set_instruction_length_n
 instruction_name,mask,match_bits,handler
 """
 def parse_key(filename):
@@ -150,12 +160,39 @@ def parse_key(filename):
     try:
         with open(filename) as csvfile:
             reader = csv.reader(csvfile, delimiter=",")
+            global SET_INSTRUCTION_LEN
+            SET_INSTRUCTION_LEN = reader.__iter__().__next__()[0]
             for line in reader:
                 line = list(map(lambda x : str.strip(x), line))
                 instructions.append(Instruction(line[0],line[1],line[2],line[3]))
     except IOError:
         sys.exit("Error: Could not open {} for reading.".format(filename))
     return instructions
+
+# """
+# Handle duplicate key by merging operations.
+# E.G. OP_A,0x01(mask),0x0f1(key) 
+#      OP_B,0x02(mask),0x0f1(key)
+# Temporarily remove OP_B when generate the hash.
+# Return new instruction list and a map contains each duplicate key
+# """
+# def handle_duplcaite_key(instructions):
+#     by_keys = dict()
+#     for inst in instructions:
+#         if inst.match_bits in by_keys:
+#             by_keys[inst.match_bits].append(inst)
+#         else:
+#             by_keys[inst.mask] = [inst]
+#     new_insts = []
+#     for (key, insts) in by_keys.items():
+#         if (len(insts) > 1):
+#             if False in [x.handler == insts[0].handler for x in insts]:
+#                 sys.exit("Error: Duplicate key must have the same handler {}".format(
+#                     ))
+#             new_insts.append(insts[0])
+#         else:
+#             new_insts.append(insts[0])
+#     return new_insts, by_keys
 
 """
 Generate code for a hashmap filter 
@@ -169,13 +206,7 @@ def gen_hashmap_filter(basename, instructions):
     except TypeError:
         salt_len = None
 
-    # find all mask, sort by its element size
-    by_masks = dict()
-    for inst in instructions:
-        if inst.mask in by_masks:
-            by_masks[inst.mask].append(inst)
-        else:
-            by_masks[inst.mask] = [inst]
+    by_masks = get_by_mask(instructions)
     sorted_masks = [k for k in sorted(by_masks, key=lambda x: len(by_masks[x]), reverse=True)]
     mask_info = ""
     for mask in sorted_masks:
@@ -203,8 +234,20 @@ Returns a list of hashmaps
 """
 def build_hashmaps(basename, instructions):
     code = gen_hashmap_filter(basename, instructions)
-    code += interface_template().format(basename=basename, size=len(instructions))
+    code += interface_template().format(basename=basename, size=len(instructions), SET_INSTRUCTION_LEN=SET_INSTRUCTION_LEN)
     return code
+
+"""
+Categorize elements by mask
+"""
+def get_by_mask(instructions):
+    by_masks = dict()
+    for inst in instructions:
+        if inst.mask in by_masks:
+            by_masks[inst.mask].append(inst)
+        else:
+            by_masks[inst.mask] = [inst]
+    return by_masks
 
 
 def main():

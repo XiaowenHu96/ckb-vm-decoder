@@ -1,8 +1,8 @@
 #[macro_use]
 extern crate criterion;
 
-use ckb_vm::instructions::{b, i, v};
-use ckb_vm_decoder::{rvb_decoder, rvi_decoder, rvv_decoder};
+use ckb_vm::instructions::{b, i, v, m};
+use ckb_vm_decoder::{rvb_decoder, rvi_decoder, rvv_decoder, rvm_decoder};
 use criterion::{BenchmarkId, Criterion};
 use rand::prelude::*;
 
@@ -61,6 +61,7 @@ macro_rules! bench_groups {
 bench_groups!(
     ("rvv", rvv_decoder, v),
     ("rvb", rvb_decoder, b),
-    ("rvi", rvi_decoder, i)
+    ("rvi", rvi_decoder, i),
+    ("rvm", rvm_decoder, m)
 );
 criterion_main!(benches);

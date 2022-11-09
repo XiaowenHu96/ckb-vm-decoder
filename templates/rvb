@@ -1,3 +1,4 @@
+set_instruction_length_4
 ADDUW    , 0xfe00707f , 0x800003b  , r_builder
 ANDN     , 0xfe00707f , 0x40007033 , r_builder
 BCLR     , 0xfe00707f , 0x48001033 , r_builder

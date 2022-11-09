@@ -1,3 +1,4 @@
+set_instruction_length_4
 VAADD_VV        , 0xfc00707f , 0x24002057 , vv_builder
 VAADD_VX        , 0xfc00707f , 0x24006057 , vx_builder
 VAADDU_VV       , 0xfc00707f , 0x20002057 , vv_builder
