@@ -5,7 +5,7 @@ For a nice intro see [here](http://ilan.schnell-web.net/prog/perfect-hash/).
 To build the project:
 ```
 git submodule init && git submodule update
-cargo build ## This will generate a file called rvv_decoder.rs at src/
+cargo build ## This will generate files called xxx_decoder.rs at src/
 
 ## test case
 cargo test
