@@ -9,6 +9,7 @@ import csv
 import random
 import string
 import os.path
+from numpy import int32
 from optparse import OptionParser
 from functools import reduce
 sys.path.append("perfect-hash/")
@@ -111,9 +112,9 @@ class MyHash(object):
 
     def __call__(self, key):
         key = int(key, 16)
-        while len(self.salt) != 4:
+        while len(self.salt) != 2:
             self.salt.append(random.randint(1, self.N - 1))
-        keys = [(key >> (8 * x) & 0xff) for x in range(0, 4)]
+        keys = [(key >> (16 * x) & 0xffff) for x in range(0, 2)]
         return sum(self.salt[i] * (c+1)
                    for i, c in enumerate(keys)) % self.N
     
@@ -127,7 +128,8 @@ const G_{BASENAME} : [u32;{size}] = $G;
     hash_template= """
 #[inline(always)]
 fn hash_f_{basename}_{version}(key: u32) -> usize {{
-    return (((key & 0xff )+1) * {s0} + ((key >> 8 & 0xff) + 1) * {s1} + ((key >> 16 & 0xff) + 1) * {s2} + ((key >> 24 )+ 1) * {s3}) as usize;
+    return (((key & 0xffff )+1) * {s0} +
+            ((key >> 16 & 0xffff) + 1) * {s2}) as usize;
 }}
     """
 
@@ -203,7 +205,6 @@ def handle_duplcaite_key(instructions):
             new_insts.append(insts[0])
         else:
             new_insts.append(insts[0])
-    print([str(x) for x in new_insts])
     return new_insts
 
 """
@@ -227,10 +228,10 @@ def gen_hashmap_filter(basename, instructions):
     template = MyHash.header_template.format(mask_info=mask_info, BASENAME=str.upper(basename), size=len(G))
     # generate hash function 1
     template += MyHash.hash_template.format(basename=basename,version=1,
-            s0=f1.salt[0], s1=f1.salt[1],s2=f1.salt[2],s3=f1.salt[3])
+            s0=f1.salt[0], s2=f1.salt[1])
     # generate hash function 2
     template += MyHash.hash_template.format(basename=basename,version=2,
-            s0=f2.salt[0], s1=f2.salt[1],s2=f2.salt[2],s3=f2.salt[3])
+            s0=f2.salt[0], s2=f2.salt[1])
     # generate perfect hash
     template += MyHash.hash_entry_template.format(basename=basename, BASENAME=str.upper(basename))
     return string.Template(template).substitute(

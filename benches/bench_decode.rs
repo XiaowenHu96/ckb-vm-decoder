@@ -14,7 +14,7 @@ macro_rules! bench_rand_decode {
                 $hash_based::INSTRUCTION_LIST[i].get_match_bits()
             };
 
-            const ITERATION: usize = 100_000_000;
+            const ITERATION: usize = 100_000_00;
             let mut group = c.benchmark_group("group");
             group.sample_size(10);
 
