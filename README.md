@@ -13,11 +13,3 @@ cargo test
 ## benchmark v.s if-else-based implementation
 cargo bench
 ```
-
-From the bench result, there is minor performance improvement. Because both the
-benchmark and mphf are generated randomly, I have seen improvement ranging from 0 up to 20%.
-
-
-## TODO
-- [ ] Explore nicer and faster hash functions.
-- [ ] The mphf is generated from a seed. Find a way to move randomness from the generation process (probably by removing salt).
